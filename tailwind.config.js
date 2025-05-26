@@ -21,6 +21,13 @@ module.exports = {
           900: '#0c4a6e',
           950: '#082f49',
         },
+        // MENA-inspired color palette
+        'mena-gold': '#D4AF37',
+        'desert-blue': '#1E40AF',
+        'sand-warm': '#F7F3E9',
+        'olive-green': '#10B981',
+        'sunset-orange': '#F59E0B',
+        'deep-teal': '#0D9488',
       },
       typography: {
         DEFAULT: {

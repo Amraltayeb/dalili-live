@@ -1,0 +1,43 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667EEA;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#764BA2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F093FB;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="pinGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFFFFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F8FAFC;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFA500;stop-opacity:1" />
+    </linearGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="rgba(0,0,0,0.2)"/>
+    </filter>
+  </defs>
+  
+  <!-- Background circle with gradient -->
+  <circle cx="24" cy="24" r="22" fill="url(#mainGradient)" filter="url(#shadow)" />
+  
+  <!-- Map pin shadow -->
+  <path d="M24 10c-4.8 0-8.7 3.9-8.7 8.7 0 3.3 4 9.5 8.7 16.8 4.7-7.3 8.7-13.5 8.7-16.8C32.7 13.9 28.8 10 24 10z" 
+        fill="rgba(0,0,0,0.15)" transform="translate(1.5,1.5)" />
+  
+  <!-- Map pin -->
+  <path d="M24 9c-4.8 0-8.7 3.9-8.7 8.7 0 3.3 4 9.5 8.7 16.8 4.7-7.3 8.7-13.5 8.7-16.8C32.7 12.9 28.8 9 24 9z" 
+        fill="url(#pinGradient)" stroke="rgba(255,255,255,0.4)" stroke-width="1" />
+  
+  <!-- Inner circle -->
+  <circle cx="24" cy="17.7" r="3.5" fill="url(#goldGradient)" stroke="rgba(255,255,255,0.3)" stroke-width="0.5" />
+  
+  <!-- Star -->
+  <path d="M24 15.5 l1.1 2.2 l2.2 0.3 l-1.6 1.6 l0.4 2.2 l-2-1.1 l-2 1.1 l0.4-2.2 l-1.6-1.6 l2.2-0.3 z" 
+        fill="white" stroke="none" />
+  
+  <!-- Small decorative dots -->
+  <circle cx="18" cy="12" r="1" fill="rgba(255,255,255,0.6)" />
+  <circle cx="30" cy="14" r="0.8" fill="rgba(255,255,255,0.4)" />
+  <circle cx="16" cy="30" r="0.6" fill="rgba(255,255,255,0.3)" />
+</svg> 
