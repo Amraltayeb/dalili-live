@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPinIcon, BuildingOfficeIcon, PhoneIcon, ClockIcon } from '@heroicons/react/24/outline';
+import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
+import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
+import PhoneIcon from '@heroicons/react/24/outline/PhoneIcon';
+import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 
 export default function WorkingHome() {
   const [currentSlide, setCurrentSlide] = useState(0);
