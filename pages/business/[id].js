@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
 
 export default function BusinessDetail() {
   const router = useRouter()
@@ -10,14 +9,30 @@ export default function BusinessDetail() {
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [supabase, setSupabase] = useState(null)
 
   useEffect(() => {
-    if (id) {
+    if (id && !supabase) {
+      initializeSupabase()
+    } else if (id && supabase) {
       fetchBusinessData()
     }
-  }, [id])
+  }, [id, supabase])
+
+  const initializeSupabase = async () => {
+    try {
+      const supabaseModule = await import('../../lib/supabase')
+      setSupabase(supabaseModule.supabase)
+      fetchBusinessData()
+    } catch (error) {
+      console.error('Error initializing Supabase:', error)
+      setError('Database connection error')
+    }
+  }
 
   const fetchBusinessData = async () => {
+    if (!supabase) return
+    
     try {
       // Fetch business details
       const { data: businessData, error: businessError } = await supabase

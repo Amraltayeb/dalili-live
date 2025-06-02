@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import Link from 'next/link'
 
 export default function Businesses() {
   const [businesses, setBusinesses] = useState([])
@@ -8,6 +8,8 @@ export default function Businesses() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedArea, setSelectedArea] = useState('')
+  const [error, setError] = useState(null)
+  const [supabase, setSupabase] = useState(null)
 
   const areas = [
     'New Cairo',
@@ -20,10 +22,24 @@ export default function Businesses() {
   ]
 
   useEffect(() => {
-    fetchData()
+    initializeSupabase()
   }, [])
 
+  const initializeSupabase = async () => {
+    try {
+      const supabaseModule = await import('../lib/supabase')
+      setSupabase(supabaseModule.supabase)
+      fetchData()
+    } catch (error) {
+      console.error('Error initializing Supabase:', error)
+      setError('Database connection error')
+      setLoading(false)
+    }
+  }
+
   const fetchData = async () => {
+    if (!supabase) return
+    
     try {
       // Fetch categories
       const { data: categoriesData } = await supabase

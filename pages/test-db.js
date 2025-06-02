@@ -1,42 +1,56 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 
-export default function TestDB() {
+export default function TestDatabase() {
+  const [supabase, setSupabase] = useState(null)
   const [businesses, setBusinesses] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    async function testDatabase() {
-      try {
-        // Test categories table
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
-          .select('*')
-          .limit(5)
-
-        if (categoriesError) throw categoriesError
-        setCategories(categoriesData || [])
-
-        // Test businesses table
-        const { data: businessesData, error: businessesError } = await supabase
-          .from('businesses')
-          .select('*')
-          .limit(5)
-
-        if (businessesError) throw businessesError
-        setBusinesses(businessesData || [])
-
-        setLoading(false)
-      } catch (err) {
-        setError(err.message)
-        setLoading(false)
-      }
-    }
-
-    testDatabase()
+    initializeSupabase()
   }, [])
+
+  const initializeSupabase = async () => {
+    try {
+      const supabaseModule = await import('../lib/supabase')
+      setSupabase(supabaseModule.supabase)
+      testConnection()
+    } catch (error) {
+      console.error('Error initializing Supabase:', error)
+      setError('Failed to initialize Supabase')
+      setLoading(false)
+    }
+  }
+
+  const testConnection = async () => {
+    if (!supabase) return
+    
+    try {
+      // Test categories table
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .limit(5)
+
+      if (categoriesError) throw categoriesError
+      setCategories(categoriesData || [])
+
+      // Test businesses table
+      const { data: businessesData, error: businessesError } = await supabase
+        .from('businesses')
+        .select('*')
+        .limit(5)
+
+      if (businessesError) throw businessesError
+      setBusinesses(businessesData || [])
+
+      setLoading(false)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
+  }
 
   if (loading) return <div className="p-8">Testing database connection...</div>
   if (error) return <div className="p-8 text-red-600">Database Error: {error}</div>

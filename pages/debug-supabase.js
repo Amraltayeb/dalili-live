@@ -1,15 +1,33 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
 
 export default function DebugSupabase() {
-  const [results, setResults] = useState({})
+  const [supabase, setSupabase] = useState(null)
+  const [connectionStatus, setConnectionStatus] = useState('checking')
+  const [businesses, setBusinesses] = useState([])
+  const [categories, setCategories] = useState([])
+  const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [results, setResults] = useState({})
 
   useEffect(() => {
-    runDiagnostics()
+    initializeSupabase()
   }, [])
 
-  const runDiagnostics = async () => {
+  const initializeSupabase = async () => {
+    try {
+      const supabaseModule = await import('../lib/supabase')
+      setSupabase(supabaseModule.supabase)
+      checkConnection()
+    } catch (error) {
+      console.error('Error initializing Supabase:', error)
+      setConnectionStatus('error')
+      setError('Failed to initialize Supabase')
+    }
+  }
+
+  const checkConnection = async () => {
+    if (!supabase) return
+    
     const diagnostics = {}
 
     // Test 1: Check environment variables
