@@ -1,8 +1,14 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
+import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
+import PhoneIcon from '@heroicons/react/24/outline/PhoneIcon';
+import StarIcon from '@heroicons/react/24/outline/StarIcon';
+import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { useState, useEffect } from 'react';
-import { MagnifyingGlassIcon, MapPinIcon, PhoneIcon, StarIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
