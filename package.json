@@ -12,6 +12,7 @@
     "test-ui": "echo 'Visit http://localhost:3000/simple-test and http://localhost:3000/home-no-db'"
   },
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.39.1",
     "next": "14.2.29",
     "react": "^18",
@@ -24,7 +25,13 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.1"
   },
-  "keywords": ["business-directory", "next.js", "supabase", "cairo", "egypt"],
+  "keywords": [
+    "business-directory",
+    "next.js",
+    "supabase",
+    "cairo",
+    "egypt"
+  ],
   "author": "Dalili Team",
   "license": "MIT",
   "repository": {
