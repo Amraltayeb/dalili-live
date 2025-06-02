@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { supabase, addBusiness, getCategories, getBusinessStats, getBusinesses, updateBusiness, deleteBusiness } from '../lib/supabase'
 
 export default function Admin() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -9,6 +8,7 @@ export default function Admin() {
   const [stats, setStats] = useState(null)
   const [allBusinesses, setAllBusinesses] = useState([])
   const [editingBusiness, setEditingBusiness] = useState(null)
+  const [supabaseFunctions, setSupabaseFunctions] = useState(null)
   
   const [formData, setFormData] = useState({
     // Basic info
@@ -116,17 +116,32 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && !supabaseFunctions) {
+      initializeSupabase()
+    } else if (isAuthenticated && supabaseFunctions) {
       loadData()
     }
-  }, [isAuthenticated])
+  }, [isAuthenticated, supabaseFunctions])
+
+  const initializeSupabase = async () => {
+    try {
+      const supabaseModule = await import('../lib/supabase')
+      setSupabaseFunctions(supabaseModule)
+      loadData()
+    } catch (error) {
+      console.error('Error initializing Supabase:', error)
+      setMessage('❌ Error connecting to database. Please check configuration.')
+    }
+  }
 
   const loadData = async () => {
+    if (!supabaseFunctions) return
+    
     try {
       const [categoriesData, statsData, businessesData] = await Promise.all([
-        getCategories(),
-        getBusinessStats(),
-        getBusinesses()
+        supabaseFunctions.getCategories(),
+        supabaseFunctions.getBusinessStats(),
+        supabaseFunctions.getBusinesses()
       ])
       
       setCategories(categoriesData)
@@ -134,6 +149,7 @@ export default function Admin() {
       setAllBusinesses(businessesData || [])
     } catch (error) {
       console.error('Error loading data:', error)
+      setMessage('❌ Error loading data. Please try again.')
     }
   }
 
@@ -229,6 +245,12 @@ export default function Admin() {
     setLoading(true)
     setMessage('')
 
+    if (!supabaseFunctions) {
+      setMessage('❌ Database connection not initialized')
+      setLoading(false)
+      return
+    }
+
     try {
       const businessData = {
         ...formData,
@@ -238,10 +260,10 @@ export default function Admin() {
       }
 
       if (editingBusiness) {
-        const result = await updateBusiness(editingBusiness.id, businessData)
+        const result = await supabaseFunctions.updateBusiness(editingBusiness.id, businessData)
         setMessage(`✅ Business "${result.name}" updated successfully!`)
       } else {
-        const result = await addBusiness(businessData)
+        const result = await supabaseFunctions.addBusiness(businessData)
         setMessage(`✅ Business "${result.name}" added successfully!`)
       }
       
@@ -303,9 +325,14 @@ export default function Admin() {
   }
 
   const handleDelete = async (businessId, businessName) => {
+    if (!supabaseFunctions) {
+      setMessage('❌ Database connection not initialized')
+      return
+    }
+
     if (confirm(`Are you sure you want to delete "${businessName}"?`)) {
       try {
-        await deleteBusiness(businessId)
+        await supabaseFunctions.deleteBusiness(businessId)
         setMessage(`✅ Business "${businessName}" deleted successfully!`)
         loadData()
       } catch (error) {
