@@ -35,9 +35,11 @@ export async function getCategories(): Promise<Category[]> {
       status,
       sort_order,
       created_at,
-      tags:tags (
-        id,
-        name
+      tags:category_tags (
+        tags (
+          id,
+          name
+        )
       )
     `)
     .eq('status', 'active')
@@ -48,7 +50,13 @@ export async function getCategories(): Promise<Category[]> {
     throw new Error('Could not fetch categories.');
   }
 
-  return data || [];
+  // The data needs to be reshaped to match the Category type
+  const reshapedData = data?.map(category => ({
+    ...category,
+    tags: category.tags.map((tagObj: any) => tagObj.tags).filter(Boolean) // Extract the nested tag object
+  })) || [];
+
+  return reshapedData;
 }
 
 /**
@@ -132,7 +140,12 @@ export async function getCategoryByName(name: string): Promise<Category | null> 
             status,
             sort_order,
             created_at,
-            tags:tags (id, name)
+            tags:category_tags (
+                tags (
+                    id,
+                    name
+                )
+            )
         `)
         .eq('name', name)
         .single();
@@ -141,8 +154,18 @@ export async function getCategoryByName(name: string): Promise<Category | null> 
         console.error(`Error fetching category ${name}:`, error);
         return null;
     }
+    
+    if (!data) {
+      return null;
+    }
 
-    return data;
+    // Reshape the data to match the Category type, similar to getCategories
+    const reshapedData = {
+      ...data,
+      tags: data.tags.map((tagObj: any) => tagObj.tags).filter(Boolean)
+    };
+
+    return reshapedData;
 }
 
 export async function getFeaturedBusinesses(): Promise<Business[]> {
