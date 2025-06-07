@@ -10,6 +10,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { Business, Category } from './types'; // Import centralized types
+import { unstable_noStore as noStore } from 'next/cache';
 
 // Initialize the Supabase client
 // Ensure these environment variables are set in your .env.local file
@@ -97,7 +98,7 @@ export async function getBusinesses(options: GetBusinessesOptions = {}): Promise
   if (options.searchQuery && options.searchQuery.trim() !== '') {
     // Use our 'search_businesses' RPC function for complex searches
     // This is more efficient than client-side filtering
-    return searchBusinesses(options.searchQuery);
+    return searchBusinesses(options.searchQuery, options.location || '');
   }
 
   if (options.location) {
@@ -112,28 +113,6 @@ export async function getBusinesses(options: GetBusinessesOptions = {}): Promise
   }
 
   return data as Business[];
-}
-
-/**
- * Performs a semantic search for businesses using the dedicated Postgres function.
- * @param {string} searchTerm - The term to search for.
- * @returns {Promise<Business[]>} A promise that resolves to an array of matching businesses.
- */
-export async function searchBusinesses(searchTerm: string): Promise<Business[]> {
-  const { data, error } = await supabase.rpc('search_businesses', {
-    search_term: searchTerm,
-  });
-
-  if (error) {
-    console.error('Error searching businesses:', error);
-    throw new Error('Could not perform business search.');
-  }
-
-  // The RPC function returns businesses, but we need to fetch their relations separately
-  // if the RPC function itself doesn't return them joined.
-  // For now, assuming the RPC returns the full Business object needed.
-  // A more robust solution might re-fetch based on IDs if relations are missing.
-  return data || [];
 }
 
 /**
@@ -164,4 +143,68 @@ export async function getCategoryByName(name: string): Promise<Category | null> 
     }
 
     return data;
+}
+
+export async function getFeaturedBusinesses(): Promise<Business[]> {
+  noStore();
+  try {
+    const { data, error } = await supabase
+      .from('businesses')
+      .select(`
+        *,
+        categories (
+          name
+        )
+      `)
+      .eq('featured', true)
+      .limit(6);
+
+    if (error) {
+      console.error('Error fetching featured businesses:', error);
+      throw new Error('Could not fetch featured businesses.');
+    }
+
+    return data as Business[];
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch featured businesses.');
+  }
+}
+
+export async function searchBusinesses(query: string, location: string): Promise<Business[]> {
+  noStore();
+  try {
+    let businessQuery = supabase
+      .from('businesses')
+      .select(
+        `
+        *,
+        categories (
+          name
+        )
+      `
+      );
+
+    if (query) {
+      // Using 'or' to search in name, description, and tags.
+      // Note: This is a simplified search. For full-text search, a dedicated Postgres function (RPC) would be better.
+      businessQuery = businessQuery.or(`name.ilike.%${query}%,description.ilike.%${query}%`);
+    }
+
+    if (location) {
+      businessQuery = businessQuery.ilike('area', `%${location}%`);
+    }
+
+    const { data, error } = await businessQuery.limit(20);
+
+    if (error) {
+      console.error('Error searching businesses:', error);
+      throw new Error('Could not search for businesses.');
+    }
+
+    return data as Business[];
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to search for businesses.');
+  }
 } 
