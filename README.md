@@ -1,9 +1,69 @@
-# 🏢 Dalili Business Directory
+# Dalili Business Directory
 
-> **Status:** 95% Complete - Ready for Launch 🚀  
-> **Issue:** Supabase connection (network/security related)
+A modern business directory application built with Next.js, Tailwind CSS, and Supabase.
 
-A modern business directory application for New Cairo, El Shorouk, and Madinaty areas.
+## 📍 Current Status: Deployment Blocked
+
+The application's codebase is complete and all known bugs have been fixed. The project has been successfully migrated to the Next.js App Router, the data access layer has been refactored, and the database schema is robust.
+
+However, the final deployment to Vercel is failing.
+
+### 🛑 The Final Problem: Vercel Cannot Connect to Supabase
+
+During the Vercel build process, the application fails at the static page generation step with a `TypeError: fetch failed`.
+
+- **This is not a code issue.** All local and Vercel-specific code and configuration bugs have been resolved.
+- **This is not a Vercel Environment Variable issue.** The `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` variables are now correctly configured in the Vercel project settings.
+
+This error indicates that Vercel's servers are being actively blocked from connecting to your Supabase database.
+
+## 🚀 Your Next Steps: Fix Supabase Settings
+
+To fix this, you must check the settings in your Supabase project dashboard.
+
+**Please perform the following two checks:**
+
+1.  **✅ Check if the Project is Paused**
+    - Go to your main project dashboard on Supabase.
+    - If the project is paused due to inactivity, please **resume it**.
+
+2.  **✅ Check Network Restrictions**
+    - In your Supabase project, navigate to **Settings > Database**.
+    - Scroll down to the **Network Restrictions** section.
+    - Ensure there are no IP addresses listed, or that Vercel's IP ranges are allowed. For debugging, it is safest to **remove all restrictions** to allow connections from any IP.
+
+After verifying that the project is active and that network restrictions are not blocking Vercel, trigger a new deployment in your Vercel dashboard. This should resolve the final issue and allow the project to go live.
+
+---
+
+## ✅ Key Achievements & Refactoring
+
+- **Architectural Shift:** Migrated the entire application from the legacy Next.js Pages Router to the modern App Router.
+- **Data Access Layer:** Replaced the legacy `lib/supabase.js` with a robust data access layer in `lib/dal.ts`.
+- **Database Schema:** Redesigned the database from a simple parent-child category model to a flexible many-to-many relationship using a `category_tags` join table.
+- **Dynamic Homepage:** Converted the main page (`src/app/page.tsx`) to a Server Component that fetches data directly.
+- **Component Refactoring:** Extracted the interactive search bar into its own Client Component.
+- **Git Hygiene:** Cleaned the repository history by removing tracked `node_modules` and `.next` directories.
+- **Vercel Configuration:** Identified and fixed multiple issues with environment variables in the Vercel deployment settings.
+
+## 🛠️ Project Structure
+
+```
+dalili-live/
+├── src/
+│   ├── app/                  # Next.js App Router
+│   │   ├── page.tsx          # Main landing page (Server Component)
+│   │   └── ...
+│   ├── components/           # React Client Components (e.g., SearchBar)
+│   └── ...
+├── lib/
+│   ├── dal.ts                # Data Access Layer (replaces supabase.js)
+│   └── sql/
+│       └── database_setup.sql # Main database schema script
+├── .env.local                # Local environment variables (NOT for production)
+├── .gitignore                # Ensures .env.local, node_modules, .next are ignored
+└── package.json
+```
 
 ## 🚀 Quick Start
 
