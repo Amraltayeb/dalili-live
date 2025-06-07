@@ -230,4 +230,22 @@ export async function searchBusinesses(query: string, location: string): Promise
     console.error('Database Error:', error);
     throw new Error('Failed to search for businesses.');
   }
+}
+
+/**
+ * A simple function to test the database connection.
+ * It performs a minimal query to check if a connection can be established.
+ * @returns {Promise<object>} A promise that resolves with the result of the query.
+ */
+export async function testDatabaseConnection() {
+  const { data, error, count } = await supabase
+    .from('areas')
+    .select('*', { count: 'exact', head: true });
+
+  if (error) {
+    console.error('Database connection test failed:', error);
+    throw new Error(`Database connection test failed: ${error.message}`);
+  }
+
+  return { status: 'ok', count };
 } 
