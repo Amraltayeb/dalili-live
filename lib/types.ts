@@ -12,15 +12,12 @@
  * tags that are associated with it (acting as subcategories).
  */
 export interface Category {
-  id: number;
-  name: string;
-  name_ar: string | null;
-  icon: string | null;
+  id: string;
+  name_en: string;
+  name_ar: string;
+  icon_svg: string | null;
   color: string | null;
-  status: string;
-  sort_order: number;
   created_at: string;
-  tags: { id: number; name: string }[] | null; // Tags acting as subcategories
 }
 
 /**
@@ -29,39 +26,166 @@ export interface Category {
  */
 export interface BusinessCategory {
   name: string;
-  name_ar: string | null;
+  name_ar: string;
   icon: string | null;
   color: string | null;
 }
 
 /**
+ * Business Hours structure for operating times
+ */
+export interface BusinessHours {
+  monday?: { open: string; close: string; closed?: boolean };
+  tuesday?: { open: string; close: string; closed?: boolean };
+  wednesday?: { open: string; close: string; closed?: boolean };
+  thursday?: { open: string; close: string; closed?: boolean };
+  friday?: { open: string; close: string; closed?: boolean };
+  saturday?: { open: string; close: string; closed?: boolean };
+  sunday?: { open: string; close: string; closed?: boolean };
+}
+
+/**
+ * Social Media Links structure
+ */
+export interface SocialMedia {
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  linkedin?: string;
+  youtube?: string;
+  tiktok?: string;
+}
+
+/**
+ * Business Features/Amenities
+ */
+export interface BusinessFeatures {
+  wifi?: boolean;
+  parking?: boolean;
+  delivery?: boolean;
+  takeout?: boolean;
+  reservations?: boolean;
+  wheelchair_accessible?: boolean;
+  outdoor_seating?: boolean;
+  accepts_cards?: boolean;
+  cash_only?: boolean;
+}
+
+/**
  * Represents the full structure of a business listing, matching
  * the 'businesses' table and the data returned from `getBusinesses`.
+ * Enhanced with Yelp-like features.
  */
 export interface Business {
-  id: number;
-  created_at: string;
+  id: string;
   name: string;
-  name_ar: string | null;
   description: string | null;
-  description_ar: string | null;
+  
+  // Contact Information
   phone: string | null;
   whatsapp: string | null;
   email: string | null;
-  area: string | null;
+  website: string | null;
+  
+  // Location & Address
   address: string | null;
-  category_id: number | null;
-  // Note: subcategory field is obsolete and replaced by tags
-  services_offered: any | null; // Using 'any' for now, can be a specific type
-  price_range: string | null;
-  working_hours: { day: string; hours: string }[] | null;
-  images: string[] | null;
-  social_links: any | null; // Using 'any' for now, can be a specific type
-  custom_data: any | null; // Flexible field for other data
+  area_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  
+  // Visual Assets
+  logo_url: string | null;
+  cover_url: string | null;
+  gallery_images: string[] | null; // JSON array of image URLs
+  
+  // Business Details
+  price_range: number | null; // 1-4 scale ($ to $$$$)
+  business_hours: BusinessHours | null; // JSON object
+  social_media: SocialMedia | null; // JSON object
+  features: BusinessFeatures | null; // JSON object
+  
+  // Ratings & Reviews
+  average_rating: number | null;
+  total_reviews: number | null;
+  
+  // Status & Timestamps
+  status: string; // 'active', 'pending', 'suspended', 'closed'
+  verified: boolean | null;
+  created_at: string;
+  updated_at: string;
+  
+  // Extended fields for display (computed)
+  categories?: BusinessCategory | null;
+  rating?: number; // For backward compatibility
+  images?: string[]; // For backward compatibility
+}
+
+/**
+ * Review system for businesses
+ */
+export interface Review {
+  id: string;
+  business_id: string;
+  user_name: string;
+  user_email?: string;
+  rating: number; // 1-5 stars
+  title: string | null;
+  comment: string | null;
+  images: string[] | null; // Review photos
+  helpful_count: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Represents a successful database connection test result.
+ */
+export interface SuccessTestResult {
+  status: 'ok';
+  count: number | null;
+}
+
+/**
+ * Represents a failed database connection test result.
+ */
+export interface ErrorTestResult {
+  status: 'error';
+  message: string;
+}
+
+/**
+ * Area/Location information
+ */
+export interface Area {
+  id: string;
+  name_en: string;
+  name_ar: string;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  created_at: string;
+}
+
+/**
+ * Business creation form data (subset of Business)
+ */
+export interface BusinessFormData {
+  name: string;
+  description: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  area_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  price_range: number | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  gallery_images: string[] | null;
+  business_hours: BusinessHours | null;
+  social_media: SocialMedia | null;
+  features: BusinessFeatures | null;
   status: string;
-  featured: boolean;
-  verified: boolean;
-  rating: number | null;
-  categories: BusinessCategory; // Joined category data
-  tags: { id: number; name: string }[] | null; // NEW: To hold business-specific tags
 } 
