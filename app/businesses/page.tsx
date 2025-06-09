@@ -2,12 +2,13 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { searchBusinesses } from "../../lib/dal";
+import { Business } from "../../lib/types";
 
 export default function BusinessesPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<Business[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function BusinessesPage() {
           <div className="text-gray-500">No businesses found.</div>
         ) : (
           <ul className="divide-y">
-            {results.map((biz: any) => (
+            {results.map((biz: Business) => (
               <li key={biz.id} className="py-3">
                 <div className="font-semibold">{biz.name}</div>
                 <div className="text-sm text-gray-600">{biz.address}</div>
