@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { searchBusinesses } from "../../lib/dal";
 import { Business } from "../../lib/types";
 
-export default function BusinessesPage() {
+function BusinessesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [query, setQuery] = useState(searchParams.get("q") || "");
@@ -58,5 +58,13 @@ export default function BusinessesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function BusinessesPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex flex-col items-center p-4 bg-gray-50"><div className="mt-8">Loading...</div></div>}>
+      <BusinessesContent />
+    </Suspense>
   );
 } 
