@@ -9,19 +9,40 @@
 import { createClient } from '@supabase/supabase-js';
 import { Business, Category, Area } from './types';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Check environment variables and provide detailed logging
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase environment variables missing:', {
+    NEXT_PUBLIC_SUPABASE_URL: !!supabaseUrl,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: !!supabaseKey,
+    NODE_ENV: process.env.NODE_ENV,
+    environment: typeof window === 'undefined' ? 'server' : 'client'
+  });
+}
+
+const supabase = createClient(supabaseUrl!, supabaseKey!);
 
 // ===================== AREAS =====================
 
 export async function getAreas(): Promise<Area[]> {
-  const { data, error } = await supabase
-    .from('areas')
-    .select('*')
-    .order('name_en');
-  if (error) throw new Error('Could not fetch areas.');
-  return data as Area[];
+  try {
+    const { data, error } = await supabase
+      .from('areas')
+      .select('*')
+      .order('name_en');
+    
+    if (error) {
+      console.error('getAreas error:', error);
+      throw new Error(`Could not fetch areas: ${error.message}`);
+    }
+    
+    return data as Area[];
+  } catch (error) {
+    console.error('getAreas caught error:', error);
+    throw error;
+  }
 }
 
 export async function createArea(area: Omit<Area, 'id' | 'created_at'>): Promise<Area> {
@@ -56,12 +77,31 @@ export async function deleteArea(id: string): Promise<void> {
 // ===================== CATEGORIES =====================
 
 export async function getCategories(): Promise<Category[]> {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .order('name_en');
-  if (error) throw new Error('Could not fetch categories.');
-  return data as Category[];
+  try {
+    console.log('getCategories: Starting fetch from Supabase...');
+    console.log('getCategories: Environment check:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseKey,
+      isServer: typeof window === 'undefined'
+    });
+    
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name_en');
+    
+    if (error) {
+      console.error('getCategories: Supabase error:', error);
+      throw new Error(`Could not fetch categories: ${error.message}`);
+    }
+    
+    console.log(`getCategories: Successfully fetched ${data?.length || 0} categories`);
+    return data as Category[];
+  } catch (error) {
+    console.error('getCategories: Caught error:', error);
+    // Instead of throwing, return empty array to prevent page crash
+    return [];
+  }
 }
 
 export async function createCategory(category: Omit<Category, 'id' | 'created_at'>): Promise<Category> {
