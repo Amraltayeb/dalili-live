@@ -62,18 +62,6 @@ export default async function Home() {
   return (
     <div className="bg-gray-50 min-h-screen text-gray-800 font-sans">
       
-      <header className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <CompassIcon className="h-8 w-8 text-blue-600" />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{t.logoTitle}</h1>
-              <p className="text-sm text-gray-500">{t.logoSubtitle}</p>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <main>
         <section className="relative h-[50vh] bg-cover bg-center text-white flex items-center justify-center" style={{backgroundImage: "url('/hero-background.svg')"}}>
           <div className="absolute inset-0 bg-black opacity-50"></div>

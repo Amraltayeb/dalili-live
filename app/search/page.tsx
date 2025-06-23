@@ -76,19 +76,6 @@ async function SearchResults({ searchParams }: { searchParams: { q?: string; loc
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            <Link href="/" className="flex items-center space-x-2 text-blue-600 hover:text-blue-700">
-              <ArrowLeftIcon className="h-5 w-5" />
-              <CompassIcon className="h-8 w-8" />
-              <span className="text-xl font-bold">DALILI</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search Header */}
         <div className="mb-8">

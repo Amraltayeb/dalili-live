@@ -26,4 +26,38 @@ html[dir="rtl"] {
 
 html[dir="ltr"] {
   text-align: left;
+}
+
+/* Fix for search input visibility */
+.search-input-fix {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  opacity: 1 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.search-input-fix:focus {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  outline: none !important;
+}
+
+.search-input-fix::placeholder {
+  color: #6b7280 !important;
+  opacity: 0.7 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+}
+
+/* Additional browser-specific fixes */
+input[type="text"].search-input-fix {
+  color: #1f2937 !important;
+  -webkit-text-fill-color: #1f2937 !important;
+}
+
+input[type="text"].search-input-fix:not(:placeholder-shown) {
+  color: #1f2937 !important;
+  -webkit-text-fill-color: #1f2937 !important;
 } 

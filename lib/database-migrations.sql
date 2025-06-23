@@ -221,4 +221,138 @@ SELECT
   ROUND(AVG(average_rating), 2) as overall_avg_rating,
   COUNT(*) FILTER (WHERE average_rating >= 4.0) as high_rated_businesses
 FROM businesses 
-WHERE status = 'active'; 
+WHERE status = 'active';
+
+-- ============== CATEGORIZATION KEYWORDS TABLE (NEW) ==============
+
+-- Create keywords table for admin-manageable categorization
+CREATE TABLE IF NOT EXISTS categorization_keywords (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  category_id UUID NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  keyword VARCHAR(100) NOT NULL,
+  region VARCHAR(50) DEFAULT 'global' NOT NULL, -- 'global', 'egypt', 'usa', 'uk', etc.
+  priority INTEGER DEFAULT 1, -- Higher priority = more specific/important
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  created_by VARCHAR(100), -- Admin user who added this
+  UNIQUE(category_id, keyword, region)
+);
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_keywords_category_region ON categorization_keywords (category_id, region);
+CREATE INDEX IF NOT EXISTS idx_keywords_active ON categorization_keywords (is_active);
+CREATE INDEX IF NOT EXISTS idx_keywords_priority ON categorization_keywords (priority DESC);
+
+-- ============== ADMIN SETTINGS TABLE (NEW) ==============
+
+-- Create admin settings table for system configuration
+CREATE TABLE IF NOT EXISTS admin_settings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  setting_key VARCHAR(100) UNIQUE NOT NULL,
+  setting_value TEXT,
+  setting_type VARCHAR(50) DEFAULT 'string', -- 'string', 'boolean', 'number', 'json'
+  description TEXT,
+  is_public BOOLEAN DEFAULT FALSE, -- Whether frontend can access this setting
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_by VARCHAR(100)
+);
+
+-- ============== SEED INITIAL KEYWORDS ==============
+
+-- Insert global restaurant keywords
+INSERT INTO categorization_keywords (category_id, keyword, region, priority) 
+SELECT c.id, keyword, 'global', priority
+FROM categories c,
+  (VALUES 
+    ('restaurant', 5), ('food', 3), ('cafe', 4), ('bistro', 4), ('dining', 3),
+    ('burger', 4), ('pizza', 4), ('grill', 3), ('kitchen', 2), ('eatery', 3),
+    ('sandwich', 3), ('fast food', 4), ('diner', 3), ('bakery', 3), ('coffee', 3)
+  ) AS keywords(keyword, priority)
+WHERE c.name_en = 'Restaurants';
+
+-- Insert global health keywords  
+INSERT INTO categorization_keywords (category_id, keyword, region, priority)
+SELECT c.id, keyword, 'global', priority
+FROM categories c,
+  (VALUES
+    ('hospital', 5), ('medical', 4), ('clinic', 5), ('pharmacy', 5), ('doctor', 4),
+    ('health', 3), ('dental', 4), ('dentist', 4), ('physician', 4), ('medicine', 3)
+  ) AS keywords(keyword, priority)
+WHERE c.name_en = 'Health & Medical';
+
+-- Insert global automotive keywords
+INSERT INTO categorization_keywords (category_id, keyword, region, priority)
+SELECT c.id, keyword, 'global', priority  
+FROM categories c,
+  (VALUES
+    ('auto', 4), ('car wash', 5), ('garage', 4), ('mechanic', 5), ('automotive', 4),
+    ('car repair', 5), ('oil change', 4), ('tire', 3), ('service center', 4)
+  ) AS keywords(keyword, priority)
+WHERE c.name_en = 'Automotive';
+
+-- Insert global beauty keywords
+INSERT INTO categorization_keywords (category_id, keyword, region, priority)
+SELECT c.id, keyword, 'global', priority
+FROM categories c,
+  (VALUES
+    ('spa', 5), ('salon', 5), ('beauty', 4), ('hair salon', 5), ('barber', 4),
+    ('nails', 4), ('massage', 4), ('facial', 3), ('manicure', 3)
+  ) AS keywords(keyword, priority)
+WHERE c.name_en = 'Beauty & Spas';
+
+-- Insert global shopping keywords
+INSERT INTO categorization_keywords (category_id, keyword, region, priority)
+SELECT c.id, keyword, 'global', priority
+FROM categories c,
+  (VALUES
+    ('mall', 5), ('shop', 3), ('store', 3), ('market', 4), ('shopping center', 5),
+    ('retail', 3), ('supermarket', 4), ('grocery', 4)
+  ) AS keywords(keyword, priority)
+WHERE c.name_en = 'Shopping';
+
+-- Insert Egyptian-specific keywords
+INSERT INTO categorization_keywords (category_id, keyword, region, priority)
+SELECT c.id, keyword, 'egypt', priority
+FROM categories c,
+  (VALUES
+    ('koshary', 5), ('sequoia', 5), ('abou tarek', 5), ('ful', 4), ('tamiya', 4)
+  ) AS keywords(keyword, priority)
+WHERE c.name_en = 'Restaurants';
+
+INSERT INTO categorization_keywords (category_id, keyword, region, priority)
+SELECT c.id, keyword, 'egypt', priority
+FROM categories c,
+  (VALUES
+    ('city stars', 5), ('festival city', 5), ('carrefour', 4), ('spinneys', 4)
+  ) AS keywords(keyword, priority)
+WHERE c.name_en = 'Shopping';
+
+-- Insert default admin settings
+INSERT INTO admin_settings (setting_key, setting_value, setting_type, description, is_public)
+VALUES 
+  ('auto_detect_region', 'true', 'boolean', 'Automatically detect business region for keyword matching', FALSE),
+  ('default_region', 'global', 'string', 'Default region to use when region cannot be detected', FALSE),
+  ('keyword_matching_enabled', 'true', 'boolean', 'Enable automatic keyword-based categorization', FALSE),
+  ('min_keyword_length', '2', 'number', 'Minimum length for keyword matching', FALSE);
+
+-- Function to update timestamps
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Add trigger for keywords table
+DROP TRIGGER IF EXISTS update_keywords_updated_at ON categorization_keywords;
+CREATE TRIGGER update_keywords_updated_at 
+    BEFORE UPDATE ON categorization_keywords 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Add trigger for admin settings table  
+DROP TRIGGER IF EXISTS update_settings_updated_at ON admin_settings;
+CREATE TRIGGER update_settings_updated_at
+    BEFORE UPDATE ON admin_settings
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column(); 

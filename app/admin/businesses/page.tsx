@@ -151,6 +151,7 @@ export default function AdminBusinesses() {
               <Link href="/admin/businesses" className="text-blue-600 font-medium">Businesses</Link>
               <Link href="/admin/categories" className="text-gray-600 hover:text-gray-900">Categories</Link>
               <Link href="/admin/areas" className="text-gray-600 hover:text-gray-900">Areas</Link>
+              <Link href="/admin/keywords" className="text-gray-600 hover:text-gray-900">Keywords</Link>
             </nav>
           </div>
         </div>

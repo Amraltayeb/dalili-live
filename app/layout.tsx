@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { registerServiceWorker } from './sw-register';
+import Navigation from '@/components/Navigation';
 
 // Register service worker for PWA functionality
 if (typeof window !== 'undefined') {
@@ -34,7 +35,8 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
       </head>
       <body>
-        <main>{children}</main>
+        <Navigation />
+        <main className="lg:ml-64">{children}</main>
       </body>
     </html>
   );

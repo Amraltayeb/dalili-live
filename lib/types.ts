@@ -85,7 +85,7 @@ export interface Business {
   phone: string | null;
   whatsapp: string | null;
   email: string | null;
-  website: string | null;
+  website_url: string | null;
   
   // Location & Address
   address: string | null;
@@ -103,6 +103,7 @@ export interface Business {
   business_hours: BusinessHours | null; // JSON object
   social_media: SocialMedia | null; // JSON object
   features: BusinessFeatures | null; // JSON object
+  timezone: string | null; // e.g., 'Africa/Cairo'
   
   // Ratings & Reviews
   average_rating: number | null;
@@ -130,11 +131,15 @@ export interface Review {
   user_email?: string;
   rating: number; // 1-5 stars
   title: string | null;
-  comment: string | null;
-  images: string[] | null; // Review photos
+  content: string;
+  photos: string[] | null; // Renamed from images
   helpful_count: number | null;
   created_at: string;
   updated_at: string;
+  users: {
+    name: string;
+    avatar_url?: string | null;
+  } | null;
 }
 
 /**
@@ -188,4 +193,57 @@ export interface BusinessFormData {
   social_media: SocialMedia | null;
   features: BusinessFeatures | null;
   status: string;
+}
+
+/**
+ * Categorization keywords for admin management
+ */
+export interface CategorizationKeyword {
+  id: string;
+  category_id: string;
+  keyword: string;
+  region: string; // 'global', 'egypt', 'usa', 'uk', etc.
+  priority: number; // Higher = more important/specific
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  // Extended fields for display
+  category?: Category;
+}
+
+/**
+ * Admin settings for system configuration
+ */
+export interface AdminSetting {
+  id: string;
+  setting_key: string;
+  setting_value: string | null;
+  setting_type: 'string' | 'boolean' | 'number' | 'json';
+  description: string | null;
+  is_public: boolean;
+  updated_at: string;
+  updated_by: string | null;
+}
+
+/**
+ * Keyword form data for creating/editing
+ */
+export interface KeywordFormData {
+  category_id: string;
+  keyword: string;
+  region: string;
+  priority: number;
+  is_active: boolean;
+  created_by?: string;
+}
+
+/**
+ * Regions supported by the system
+ */
+export interface SupportedRegion {
+  code: string;
+  name: string;
+  flag: string;
+  example_keywords: string[];
 } 

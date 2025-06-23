@@ -1,318 +1,231 @@
 "use client";
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { 
+  getBusinesses, 
+  getCategories, 
+  getCategorizationKeywords,
+  autoCategorizeBusiness,
+  clearAllBusinessCategories 
+} from '../../lib/dal';
+import { Business, Category, CategorizationKeyword } from '../../lib/types';
 import Link from 'next/link';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default function FixCategoriesPage() {
-  const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [keywords, setKeywords] = useState<CategorizationKeyword[]>([]);
 
-  const checkCurrentState = async () => {
+  const loadData = async () => {
+    try {
+      const [businessesData, categoriesData, keywordsData] = await Promise.all([
+        getBusinesses(),
+        getCategories(),
+        getCategorizationKeywords()
+      ]);
+      setBusinesses(businessesData);
+      setCategories(categoriesData);
+      setKeywords(keywordsData);
+      setResults(prev => [...prev, `✅ Loaded: ${businessesData.length} businesses, ${categoriesData.length} categories, ${keywordsData.length} keywords`]);
+    } catch (error) {
+      setResults(prev => [...prev, `❌ Error loading data: ${error}`]);
+    }
+  };
+
+  const analyzeBusinessRegion = (business: Business): string => {
+    const text = `${business.name} ${business.description || ''} ${business.address || ''}`.toLowerCase();
+    
+    // Egyptian indicators
+    if (text.includes('cairo') || text.includes('egypt') || text.includes('alexandria') || 
+        text.includes('giza') || text.includes('koshary') || text.includes('sequoia')) {
+      return 'egypt';
+    }
+    
+    // USA indicators  
+    if (text.includes('usa') || text.includes('america') || text.includes('new york') || 
+        text.includes('california')) {
+      return 'usa';
+    }
+    
+    // Default to global
+    return 'global';
+  };
+
+  const findBestCategoryMatch = (business: Business, availableKeywords: CategorizationKeyword[]): { category: Category; keyword: string; priority: number; region: string } | null => {
+    const businessText = `${business.name} ${business.description || ''}`.toLowerCase();
+    
+    let bestMatch: { category: Category; keyword: string; priority: number; region: string } | null = null;
+    
+    for (const keywordEntry of availableKeywords) {
+      if (businessText.includes(keywordEntry.keyword.toLowerCase())) {
+        if (!bestMatch || keywordEntry.priority > bestMatch.priority) {
+          const category = categories.find(c => c.id === keywordEntry.category_id);
+          if (category) {
+            bestMatch = {
+              category,
+              keyword: keywordEntry.keyword,
+              priority: keywordEntry.priority,
+              region: keywordEntry.region
+            };
+          }
+        }
+      }
+    }
+    
+    return bestMatch;
+  };
+
+  const categorizeBusiness = async (business: Business): Promise<void> => {
+    try {
+      // Detect business region
+      const region = analyzeBusinessRegion(business);
+      
+      // Get relevant keywords (global + region-specific)
+      const relevantKeywords = keywords.filter(k => 
+        k.is_active && (k.region === 'global' || k.region === region)
+      );
+      
+      // Find best match
+      const match = findBestCategoryMatch(business, relevantKeywords);
+      
+      if (match) {
+        // Use the built-in auto categorization function
+        await autoCategorizeBusiness(business.id, region);
+        
+        const regionFlag = region === 'egypt' ? '🇪🇬' : region === 'usa' ? '🇺🇸' : '🌍';
+        setResults(prev => [...prev, 
+          `✅ "${business.name}" → ${match.category.name_en} (${regionFlag} ${match.keyword}, priority: ${match.priority})`
+        ]);
+      } else {
+        setResults(prev => [...prev, `⚠️ No category match found for "${business.name}"`]);
+      }
+    } catch (error) {
+      setResults(prev => [...prev, `❌ Error categorizing "${business.name}": ${error}`]);
+    }
+  };
+
+  const handleFixCategories = async () => {
     setLoading(true);
     setResults([]);
-    setError(null);
-
+    
     try {
-      const newResults: string[] = [];
-      newResults.push('🔍 Checking Current Database State...');
-
-      // Get all businesses and categories
-      const { data: businesses, error: businessError } = await supabase
-        .from('businesses')
-        .select('*');
-
-      const { data: categories, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*');
-
-      const { data: links, error: linksError } = await supabase
-        .from('business_category')
-        .select('*, businesses(name), categories(name_en)');
-
-      if (businessError || categoriesError || linksError) {
-        throw new Error(`Error fetching data: ${businessError?.message || categoriesError?.message || linksError?.message}`);
+      // Load fresh data
+      await loadData();
+      
+      setResults(prev => [...prev, '🚀 Starting intelligent categorization process...']);
+      
+      // Process each business
+      for (const business of businesses) {
+        await categorizeBusiness(business);
       }
-
-      newResults.push(`📊 Found ${businesses?.length || 0} businesses`);
-      newResults.push(`📊 Found ${categories?.length || 0} categories`);
-      newResults.push(`📊 Found ${links?.length || 0} business-category links`);
-      newResults.push('');
-
-      // Show current businesses
-      newResults.push('🏢 Current Businesses:');
-      businesses?.forEach(business => {
-        const businessLinks = links?.filter(link => link.business_id === business.id);
-        const categoryNames = businessLinks?.map(link => link.categories?.name_en).join(', ') || 'None';
-        newResults.push(`  • ${business.name} → ${categoryNames}`);
-      });
-
-      newResults.push('');
-      newResults.push('🔧 Ready to fix categorization!');
-
-      setResults(newResults);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      
+      setResults(prev => [...prev, 
+        `🎉 Categorization complete! Processed ${businesses.length} businesses.`
+      ]);
+      
+    } catch (error) {
+      setResults(prev => [...prev, `❌ Critical error: ${error}`]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fixCategories = async () => {
+  const handleClearAll = async () => {
+    if (!confirm('Are you sure you want to clear ALL business categories? This cannot be undone.')) {
+      return;
+    }
+    
     setLoading(true);
     setResults([]);
-    setError(null);
-
+    
     try {
-      const newResults: string[] = [];
-      newResults.push('🔧 Starting Smart Category Fix...');
-
-      // Get all businesses and categories
-      const { data: businesses, error: businessError } = await supabase
-        .from('businesses')
-        .select('*');
-
-      const { data: categories, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*');
-
-      if (businessError || categoriesError) {
-        throw new Error(`Error fetching data: ${businessError?.message || categoriesError?.message}`);
-      }
-
-      newResults.push(`📊 Found ${businesses?.length || 0} businesses and ${categories?.length || 0} categories`);
-
-      // Skip clearing - just use upsert logic instead
-      newResults.push('🔄 Using smart upsert to avoid duplicates...');
-
-      // Enhanced categorization rules with prioritized keywords
-      const categorizationRules: { [key: string]: string[] } = {
-        'Restaurants': [
-          'koshary', 'sequoia', 'zooba', 'andrea', 'burger', 'pizza', 'shawarma', 'grill', 'kitchen', 'eatery', 'meal', 'cuisine', 'hub',
-          'restaurant', 'food', 'cafe', 'bistro', 'dining'
-        ],
-        'Health & Medical': [
-          'hospital', 'medical', 'clinic', 'pharmacy', 'doctor', 'health', 'salam', 'cleopatra', 'dental',
-          'care center', 'medical care', 'health care', 'treatment', 'medicine', 'lab', 'diagnostic'
-        ],
-        'Home Services': [
-          'plumber', 'plumbing', 'electrical', 'electrician', 'cleaning', 'maintenance', 'repair service', 'home service',
-          'technician', 'installation', 'handyman', 'contracting'
-        ],
-        'Automotive': [
-          'auto', 'car wash', 'car care', 'auto care', 'motor', 'vehicle', 'automotive', 'garage', 'workshop',
-          'ghabbour', 'bavarian', 'bmw', 'hyundai', 'car dealer', 'car repair'
-        ],
-        'Beauty & Spas': [
-          'spa', 'salon', 'beauty', 'espace', 'four seasons spa', 'hair studio', 'hair salon', 'glamour',
-          'nails', 'massage', 'barber', 'cosmetic', 'wellness center'
-        ],
-        'Shopping': [
-          'mall', 'city stars', 'festival city', 'outlet', 'market', 'shopping center',
-          'shop', 'store', 'retail', 'boutique', 'center', 'plaza'
-        ],
-        'Entertainment': [
-          'cinema', 'movie', 'galaxy', 'vox', 'theater', 'entertainment', 'fun', 'game',
-          'club', 'recreation', 'leisure'
-        ],
-        'Hotels & Travel': [
-          'hotel', 'resort', 'four seasons hotel', 'marriott', 'travel', 'tourism',
-          'accommodation', 'lodge', 'inn', 'hospitality'
-        ],
-        'Sports & Fitness': [
-          'gym', 'fitness', 'gold', 'curves', 'sport', 'exercise', 'training',
-          'health club', 'workout', 'athletic'
-        ],
-        'Financial Services': [
-          'bank', 'insurance', 'finance', 'exchange', 'money', 'credit',
-          'loan', 'investment', 'financial'
-        ],
-        'Transportation': [
-          'taxi', 'bus', 'metro', 'delivery', 'transport', 'logistics',
-          'shipping', 'courier', 'moving'
-        ],
-        'Education': [
-          'school', 'university', 'education', 'training center', 'learning',
-          'institute', 'academy', 'college', 'course'
-        ]
-      };
-
-      let categorizedCount = 0;
-
-      // Categorize each business
-      for (const business of businesses || []) {
-        const businessText = `${business.name} ${business.description || ''}`.toLowerCase();
-        
-        // Find matching category - prioritize longer/more specific keywords
-        let matchedCategory = null;
-        let matchedKeyword = '';
-        let bestMatchLength = 0;
-        
-        for (const [categoryName, keywords] of Object.entries(categorizationRules)) {
-          // Sort keywords by length (longer = more specific)
-          const sortedKeywords = keywords.sort((a, b) => b.length - a.length);
-          
-          for (const keyword of sortedKeywords) {
-            if (businessText.includes(keyword) && keyword.length > bestMatchLength) {
-              matchedCategory = categories?.find(cat => cat.name_en === categoryName);
-              matchedKeyword = keyword;
-              bestMatchLength = keyword.length;
-            }
-          }
-        }
-
-        if (matchedCategory) {
-          // Check if link already exists to prevent duplicates
-          const { data: existingLink } = await supabase
-            .from('business_category')
-            .select('*')
-            .eq('business_id', business.id)
-            .eq('category_id', matchedCategory.id)
-            .maybeSingle();
-
-          if (existingLink) {
-            newResults.push(`ℹ️ ${business.name} already linked to ${matchedCategory.name_en}`);
-          } else {
-            // Link business to category
-            const { error: linkError } = await supabase
-              .from('business_category')
-              .insert({
-                business_id: business.id,
-                category_id: matchedCategory.id
-              });
-
-            if (linkError) {
-              newResults.push(`⚠️ Failed to link ${business.name} to ${matchedCategory.name_en}: ${linkError.message}`);
-            } else {
-              categorizedCount++;
-              newResults.push(`✅ ${business.name} → ${matchedCategory.name_en} (keyword: "${matchedKeyword}")`);
-            }
-          }
-        } else {
-          // Fallback to 'Shopping' for unmatched businesses
-          const fallbackCategory = categories?.find(cat => cat.name_en === 'Shopping');
-          if (fallbackCategory) {
-            // Check if link already exists
-            const { data: existingLink } = await supabase
-              .from('business_category')
-              .select('*')
-              .eq('business_id', business.id)
-              .eq('category_id', fallbackCategory.id)
-              .maybeSingle();
-
-            if (!existingLink) {
-              const { error: linkError } = await supabase
-                .from('business_category')
-                .insert({
-                  business_id: business.id,
-                  category_id: fallbackCategory.id
-                });
-
-              if (!linkError) {
-                categorizedCount++;
-                newResults.push(`✅ ${business.name} → Shopping (fallback)`);
-              } else {
-                newResults.push(`⚠️ Failed to link ${business.name} to Shopping: ${linkError.message}`);
-              }
-            } else {
-              newResults.push(`ℹ️ ${business.name} already linked to Shopping`);
-            }
-          } else {
-            newResults.push(`⚠️ No category found for: ${business.name}`);
-          }
-        }
-      }
-
-      newResults.push('');
-      newResults.push(`🎉 Smart Category Fix Complete!`);
-      newResults.push(`📊 Successfully categorized: ${categorizedCount} businesses`);
-      newResults.push(`📊 Total processed: ${(businesses?.length || 0)} businesses`);
-      newResults.push('');
-      newResults.push('🔍 Test your categories now:');
-      newResults.push('• Go to /search?category=Restaurants');
-      newResults.push('• Go to /search?category=Shopping');
-      newResults.push('• Go to /search?category=Health%20%26%20Medical');
-
-      setResults(newResults);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setResults(['🗑️ Clearing all business categories...']);
+      await clearAllBusinessCategories();
+      setResults(prev => [...prev, '✅ All business categories cleared successfully']);
+    } catch (error) {
+      setResults([`❌ Error clearing categories: ${error}`]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">🔧 Fix Business Categories</h1>
-          <p className="text-gray-600 mb-6">
-            This tool will analyze business names and descriptions to automatically assign them to the correct categories.
+    <div className="min-h-screen bg-gray-50 py-12">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            🔧 Smart Business Categorization Tool
+          </h1>
+          <p className="text-gray-600 mb-8">
+            Intelligently categorize businesses using admin-managed keywords and region detection
           </p>
-          
-          <div className="flex gap-4">
-            <button
-              onClick={checkCurrentState}
-              disabled={loading}
-              className="px-6 py-3 bg-blue-100 text-blue-800 font-semibold rounded-lg hover:bg-blue-200 disabled:opacity-50 transition-colors"
-            >
-              {loading ? '🔍 Checking...' : '🔍 Check Current State'}
-            </button>
-            
-            <button
-              onClick={fixCategories}
-              disabled={loading}
-              className="px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              {loading ? '🔧 Fixing...' : '🔧 Fix Categories Now'}
-            </button>
-            
-            <Link 
-              href="/search"
-              className="px-6 py-3 bg-gray-100 text-gray-800 font-semibold rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              🔍 Test Search
-            </Link>
-          </div>
-        </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <h3 className="text-red-800 font-semibold mb-2">❌ Error</h3>
-            <p className="text-red-700 text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Results Display */}
-        {results.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">📋 Results</h3>
-            <div className="bg-gray-900 text-green-400 rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
-              {results.map((result, index) => (
-                <div key={index} className="mb-1">
-                  {result}
-                </div>
-              ))}
+          {/* Keywords Summary */}
+          <div className="bg-blue-50 rounded-lg p-4 mb-6">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">📊 Current System Status</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{businesses.length}</div>
+                <div className="text-blue-800">Businesses</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{categories.length}</div>
+                <div className="text-green-800">Categories</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{keywords.length}</div>
+                <div className="text-purple-800">Keywords</div>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mt-6">
-          <h3 className="text-blue-800 font-semibold mb-2">💡 How This Works</h3>
-          <ul className="text-blue-700 text-sm space-y-1">
-            <li>• Analyzes business names and descriptions</li>
-            <li>• Matches keywords to appropriate categories</li>
-            <li>• Prioritizes longer, more specific keywords</li>
-            <li>• Creates proper business-category relationships</li>
-            <li>• Uses 'Shopping' as fallback for unmatched businesses</li>
-          </ul>
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <button
+              onClick={handleFixCategories}
+              disabled={loading}
+              className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? '🔄 Processing...' : '🎯 Auto-Categorize All Businesses'}
+            </button>
+            
+            <button
+              onClick={handleClearAll}
+              disabled={loading}
+              className="px-6 py-3 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              🗑️ Clear All Categories
+            </button>
+          </div>
+
+          {/* Results */}
+          {results.length > 0 && (
+            <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+              <h3 className="font-semibold text-gray-900 mb-3">📝 Process Log:</h3>
+              <div className="space-y-2">
+                {results.map((result, index) => (
+                  <div key={index} className="text-sm font-mono bg-white p-2 rounded border-l-4 border-blue-400">
+                    {result}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Admin Link */}
+          <div className="mt-8 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+            <h4 className="font-semibold text-yellow-800 mb-2">⚙️ Admin Controls</h4>
+            <p className="text-yellow-700 text-sm mb-3">
+              Want to modify keywords or add new regions? Use the admin panel to manage categorization rules.
+            </p>
+            <a 
+              href="/admin/keywords" 
+              className="inline-flex items-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors"
+            >
+              🔧 Manage Keywords & Regions
+            </a>
+          </div>
         </div>
       </div>
     </div>

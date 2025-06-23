@@ -7,7 +7,7 @@
 // =================================================================
 
 import { createClient } from '@supabase/supabase-js';
-import { Business, Category, Area } from './types';
+import { Business, Category, Area, CategorizationKeyword, AdminSetting, KeywordFormData } from './types';
 
 // Check environment variables and provide detailed logging
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -131,6 +131,18 @@ export async function deleteCategory(id: string): Promise<void> {
     .delete()
     .eq('id', id);
   if (error) throw new Error('Could not delete category.');
+}
+
+export async function getBusinessCountByCategory(categoryId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('business_category')
+    .select('*', { count: 'exact', head: true })
+    .eq('category_id', categoryId);
+  if (error) {
+    console.error('Error getting business count:', error);
+    return 0;
+  }
+  return count || 0;
 }
 
 // ===================== BUSINESSES =====================
@@ -644,22 +656,361 @@ export async function getBusinessStatsByCategory(): Promise<any[]> {
 
 export async function getBusinessStatsByLocation(): Promise<any[]> {
   const { data, error } = await supabase
-    .from('areas')
+    .from('businesses')
     .select(`
-      *,
-      businesses (
-        id,
-        status
+      id,
+      name,
+      areas (
+        name_en,
+        city
       )
-    `);
+    `)
+    .eq('status', 'active');
 
   if (error) {
     console.error('Error getting business stats by location:', error);
     throw error;
   }
 
-  return data?.map(area => ({
-    ...area,
-    business_count: area.businesses?.filter((b: any) => b.status === 'active').length || 0
+  // Group by location
+  const locationStats: { [key: string]: number } = {};
+  data?.forEach(business => {
+    const area = business.areas as any; // Handle Supabase join result
+    const location = area?.name_en || area?.city || 'Unknown';
+    locationStats[location] = (locationStats[location] || 0) + 1;
+  });
+
+  return Object.entries(locationStats).map(([location, count]) => ({
+    location,
+    count
+  }));
+}
+
+// ===================== KEYWORD MANAGEMENT =====================
+
+export async function getCategorizationKeywords(region?: string): Promise<CategorizationKeyword[]> {
+  let query = supabase
+    .from('categorization_keywords')
+    .select(`
+      *,
+      categories (
+        id,
+        name_en,
+        name_ar,
+        icon_svg,
+        color
+      )
+    `)
+    .eq('is_active', true)
+    .order('priority', { ascending: false });
+
+  if (region) {
+    query = query.eq('region', region);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error getting categorization keywords:', error);
+    throw error;
+  }
+
+  return data?.map(keyword => ({
+    ...keyword,
+    category: keyword.categories
   })) || [];
+}
+
+export async function getKeywordsByCategory(categoryId: string, region?: string): Promise<CategorizationKeyword[]> {
+  let query = supabase
+    .from('categorization_keywords')
+    .select('*')
+    .eq('category_id', categoryId)
+    .eq('is_active', true)
+    .order('priority', { ascending: false });
+
+  if (region) {
+    query = query.eq('region', region);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error('Error getting keywords by category:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function createKeyword(keywordData: KeywordFormData): Promise<CategorizationKeyword> {
+  const { data, error } = await supabase
+    .from('categorization_keywords')
+    .insert([keywordData])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating keyword:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function updateKeyword(id: string, updates: Partial<KeywordFormData>): Promise<CategorizationKeyword> {
+  const { data, error } = await supabase
+    .from('categorization_keywords')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating keyword:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+export async function deleteKeyword(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('categorization_keywords')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting keyword:', error);
+    throw error;
+  }
+}
+
+export async function toggleKeywordStatus(id: string, isActive: boolean): Promise<CategorizationKeyword> {
+  const { data, error } = await supabase
+    .from('categorization_keywords')
+    .update({ is_active: isActive })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error toggling keyword status:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+// ===================== ADMIN SETTINGS =====================
+
+export async function getAdminSettings(): Promise<AdminSetting[]> {
+  const { data, error } = await supabase
+    .from('admin_settings')
+    .select('*')
+    .order('setting_key');
+
+  if (error) {
+    console.error('Error getting admin settings:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+export async function getAdminSetting(key: string): Promise<AdminSetting | null> {
+  const { data, error } = await supabase
+    .from('admin_settings')
+    .select('*')
+    .eq('setting_key', key)
+    .single();
+
+  if (error) {
+    console.error('Error getting admin setting:', error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function updateAdminSetting(key: string, value: string, updatedBy?: string): Promise<AdminSetting> {
+  const { data, error } = await supabase
+    .from('admin_settings')
+    .update({
+      setting_value: value,
+      updated_by: updatedBy
+    })
+    .eq('setting_key', key)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating admin setting:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+// ===================== SMART CATEGORIZATION WITH DB KEYWORDS =====================
+
+export async function autoCategorizeBusiness(businessId: string, forceRegion?: string): Promise<void> {
+  // Get business details
+  const business = await getBusinessById(businessId);
+  if (!business) {
+    throw new Error('Business not found');
+  }
+
+  // Detect region (or use forced region)
+  const region = forceRegion || detectBusinessRegion(business);
+  
+  // Get keywords for region and global
+  const keywords = await getCategorizationKeywords();
+  const regionalKeywords = keywords.filter(k => k.region === region || k.region === 'global');
+  
+  // Find best matching category
+  const businessText = `${business.name} ${business.description || ''}`.toLowerCase();
+  
+  let bestMatch: { category: Category; keyword: string; priority: number } | null = null;
+  
+  for (const keywordEntry of regionalKeywords) {
+    if (businessText.includes(keywordEntry.keyword.toLowerCase())) {
+      if (!bestMatch || keywordEntry.priority > bestMatch.priority) {
+        const category = await supabase
+          .from('categories')
+          .select('*')
+          .eq('id', keywordEntry.category_id)
+          .single();
+        
+        if (category.data) {
+          bestMatch = {
+            category: category.data,
+            keyword: keywordEntry.keyword,
+            priority: keywordEntry.priority
+          };
+        }
+      }
+    }
+  }
+  
+  if (bestMatch) {
+    // Clear existing category links
+    await supabase
+      .from('business_category')
+      .delete()
+      .eq('business_id', businessId);
+    
+    // Add new category link
+    await supabase
+      .from('business_category')
+      .insert({
+        business_id: businessId,
+        category_id: bestMatch.category.id
+      });
+  }
+}
+
+function detectBusinessRegion(business: Business): string {
+  const text = `${business.name} ${business.description || ''} ${business.address || ''}`.toLowerCase();
+  
+  // Egyptian indicators
+  if (text.includes('cairo') || text.includes('egypt') || text.includes('alexandria') || 
+      text.includes('giza') || text.includes('koshary') || text.includes('sequoia')) {
+    return 'egypt';
+  }
+  
+  // Add other region detection logic here
+  // USA indicators
+  if (text.includes('usa') || text.includes('america') || text.includes('new york') || 
+      text.includes('california')) {
+    return 'usa';
+  }
+  
+  // Default to global
+  return 'global';
+}
+
+// ===================== BATCH OPERATIONS =====================
+
+export async function clearAllBusinessCategories(): Promise<void> {
+  const { error } = await supabase
+    .from('business_category')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+  if (error) {
+    console.error('Error clearing all business categories:', error);
+    throw error;
+  }
+}
+
+export async function autoCategorizeBatch(businessIds: string[], forceRegion?: string): Promise<{ success: number; errors: string[] }> {
+  let successCount = 0;
+  const errors: string[] = [];
+
+  for (const businessId of businessIds) {
+    try {
+      await autoCategorizeBusiness(businessId, forceRegion);
+      successCount++;
+    } catch (error) {
+      errors.push(`Business ${businessId}: ${error}`);
+    }
+  }
+
+  return { success: successCount, errors };
+}
+
+export async function getCurrentUser() {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+}
+
+// ===================== SUBMISSIONS =====================
+
+export async function getPendingSubmissions() {
+  const { data, error } = await supabase
+    .from('business_submissions')
+    .select('*')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error("Error fetching pending submissions:", error);
+    throw new Error("Could not fetch pending submissions.");
+  }
+  return data;
+}
+
+export async function getSubmissionById(id: string) {
+  const { data, error } = await supabase
+    .from('business_submissions')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) {
+    console.error(`Error fetching submission ${id}:`, error);
+    throw new Error("Could not fetch the submission.");
+  }
+  return data;
+}
+
+// ===================== REVIEWS =====================
+
+export async function getReviewsByBusinessId(businessId: string) {
+    const { data, error } = await supabase
+        .from('reviews')
+        .select(`
+            *,
+            users ( id, name )
+        `)
+        .eq('business_id', businessId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error(`Error fetching reviews for business ${businessId}:`, error);
+        throw new Error('Could not fetch reviews.');
+    }
+
+    return data;
 } 
