@@ -104,16 +104,20 @@ export default function AdminBusinesses() {
       latitude: formData.latitude || null,
       longitude: formData.longitude || null,
       price_range: formData.price_range || null,
-      features: formData.features || {},
-      social_media: {
-        facebook: formData.social_media?.facebook ? ensureProtocol(formData.social_media.facebook) : '',
-        instagram: formData.social_media?.instagram ? ensureProtocol(formData.social_media.instagram) : ''
-      },
-      gallery_images: formData.gallery_images || [],
-      business_hours: formData.business_hours || {},
+      features: formData.features || null,
+      social_media: formData.social_media ? {
+        facebook: formData.social_media?.facebook ? ensureProtocol(formData.social_media.facebook) : undefined,
+        instagram: formData.social_media?.instagram ? ensureProtocol(formData.social_media.instagram) : undefined,
+        twitter: undefined,
+        linkedin: undefined,
+        youtube: undefined,
+        tiktok: undefined
+      } : null,
+      gallery_images: formData.gallery_images || null,
+      business_hours: formData.business_hours || null,
       timezone: 'Africa/Cairo', // Default timezone for Egypt
-      average_rating: 0,
-      total_reviews: 0,
+      average_rating: null,
+      total_reviews: null,
       verified: false
     };
     
