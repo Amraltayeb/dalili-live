@@ -1041,21 +1041,64 @@ export async function getSubmissionById(id: string) {
 // ===================== REVIEWS =====================
 
 export async function getReviewsByBusinessId(businessId: string) {
-    const { data, error } = await supabase
-        .from('reviews')
-        .select(`
-            *,
-            users ( id, name )
-        `)
-        .eq('business_id', businessId)
-        .order('created_at', { ascending: false });
+    try {
+        // First try with specific foreign key
+        const { data, error } = await supabase
+            .from('reviews')
+            .select(`
+                *,
+                users!user_id ( id, name, avatar_url )
+            `)
+            .eq('business_id', businessId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error(`Error fetching reviews for business ${businessId}:`, error);
-        throw new Error('Could not fetch reviews.');
+        if (error) {
+            console.warn(`Specific foreign key failed, trying simple approach:`, error);
+            
+            // Fallback: get reviews without user data, then fetch users separately
+            const { data: reviewsData, error: reviewsError } = await supabase
+                .from('reviews')
+                .select('*')
+                .eq('business_id', businessId)
+                .eq('status', 'active')
+                .order('created_at', { ascending: false });
+
+            if (reviewsError) {
+                console.error(`Error fetching reviews for business ${businessId}:`, reviewsError);
+                return [];
+            }
+
+            // Fetch user data separately for each review
+            const reviewsWithUsers = await Promise.all(
+                (reviewsData || []).map(async (review) => {
+                    if (review.user_id) {
+                        const { data: userData } = await supabase
+                            .from('users')
+                            .select('id, name, avatar_url')
+                            .eq('id', review.user_id)
+                            .single();
+                        
+                        return {
+                            ...review,
+                            users: userData
+                        };
+                    }
+                    return {
+                        ...review,
+                        users: null
+                    };
+                })
+            );
+
+            return reviewsWithUsers;
+        }
+
+        return data || [];
+    } catch (error) {
+        console.error(`Unexpected error fetching reviews for business ${businessId}:`, error);
+        return [];
     }
-
-    return data;
 }
 
 // ===================== ENHANCED SEARCH WITH FILTERS =====================

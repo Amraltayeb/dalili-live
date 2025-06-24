@@ -245,9 +245,17 @@ export default function BusinessPage({ params }: { params: { id: string } }) {
                 const businessData = await getBusinessById(params.id);
                 console.log('📊 Business data received:', businessData);
                 if (businessData) {
-                    const reviewsData = await getReviewsByBusinessId(params.id);
                     setBusiness(businessData);
-                    setReviews(reviewsData);
+                    
+                    // Fetch reviews separately and handle errors gracefully
+                    try {
+                        const reviewsData = await getReviewsByBusinessId(params.id);
+                        console.log('📊 Reviews data received:', reviewsData?.length || 0, 'reviews');
+                        setReviews(reviewsData || []);
+                    } catch (reviewError) {
+                        console.warn('⚠️ Failed to fetch reviews, continuing without them:', reviewError);
+                        setReviews([]);
+                    }
                 } else {
                     console.error('❌ Business not found for ID:', params.id);
                 }
