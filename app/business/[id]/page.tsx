@@ -119,6 +119,20 @@ const BusinessFeatures = ({ features }: { features?: any }) => {
 const ReviewCard = ({ review }: { review: Review }) => {
     const userInitial = (review.users?.name || 'U').charAt(0).toUpperCase();
     const hasAvatar = Boolean(review.users?.avatar_url);
+    const [helpfulCount, setHelpfulCount] = useState(review.helpful_count || 0);
+    const [userVoted, setUserVoted] = useState(false);
+    
+    const handleHelpfulVote = async () => {
+        if (userVoted) return;
+        
+        try {
+            // TODO: Implement helpful vote API
+            setHelpfulCount(prev => prev + 1);
+            setUserVoted(true);
+        } catch (error) {
+            console.error('Failed to vote:', error);
+        }
+    };
     
     return (
         <div className="border-b border-gray-200 pb-6 last:border-b-0 last:pb-0">
@@ -193,6 +207,23 @@ const ReviewCard = ({ review }: { review: Review }) => {
                     ))}
                 </div>
             )}
+            <div className="mt-4 flex items-center justify-between">
+                <button
+                    onClick={handleHelpfulVote}
+                    disabled={userVoted}
+                    className={`flex items-center space-x-1 text-sm transition-colors ${
+                        userVoted 
+                            ? 'text-green-600 cursor-default' 
+                            : 'text-gray-500 hover:text-green-600 cursor-pointer'
+                    }`}
+                >
+                    <span className="text-lg">👍</span>
+                    <span>Helpful ({helpfulCount})</span>
+                </button>
+                <div className="text-xs text-gray-400">
+                    Was this review helpful?
+                </div>
+            </div>
         </div>
     );
 };
@@ -203,6 +234,8 @@ export default function BusinessPage({ params }: { params: { id: string } }) {
     const [business, setBusiness] = useState<Business | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loading, setLoading] = useState(true);
+    const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'highest' | 'lowest'>('newest');
+    const [reviewsToShow, setReviewsToShow] = useState(5);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -222,6 +255,22 @@ export default function BusinessPage({ params }: { params: { id: string } }) {
         };
         fetchData();
     }, [params.id]);
+
+    // Sort reviews based on selected option
+    const sortedReviews = [...reviews].sort((a, b) => {
+        switch (sortBy) {
+            case 'newest':
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            case 'oldest':
+                return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            case 'highest':
+                return b.rating - a.rating;
+            case 'lowest':
+                return a.rating - b.rating;
+            default:
+                return 0;
+        }
+    });
 
     if (loading) {
         return <div className="text-center p-20 font-semibold text-gray-600">Loading business details...</div>;
@@ -244,6 +293,13 @@ export default function BusinessPage({ params }: { params: { id: string } }) {
     const averageRating = reviews.length > 0
         ? reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length
         : 0;
+    
+    // Calculate rating breakdown
+    const ratingBreakdown = [5, 4, 3, 2, 1].map(rating => ({
+        rating,
+        count: reviews.filter(review => review.rating === rating).length,
+        percentage: reviews.length > 0 ? (reviews.filter(review => review.rating === rating).length / reviews.length) * 100 : 0
+    }));
     
     const priceRange = business.price_range || 2;
 
@@ -300,13 +356,71 @@ export default function BusinessPage({ params }: { params: { id: string } }) {
                         <div className="lg:col-span-2 space-y-8">
                             <BusinessFeatures features={business.features} />
                             <div id="reviews" className="bg-white p-6 rounded-xl shadow-md">
-                                <h3 className="text-xl font-bold text-gray-800 mb-5">Reviews</h3>
+                                <div className="flex items-center justify-between mb-5">
+                                    <h3 className="text-xl font-bold text-gray-800">Reviews ({reviews.length})</h3>
+                                    {reviews.length > 0 && (
+                                        <select 
+                                            value={sortBy} 
+                                            onChange={(e) => setSortBy(e.target.value as any)}
+                                            className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="newest">Newest first</option>
+                                            <option value="oldest">Oldest first</option>
+                                            <option value="highest">Highest rated</option>
+                                            <option value="lowest">Lowest rated</option>
+                                        </select>
+                                    )}
+                                </div>
                                 {reviews.length > 0 ? (
-                                    <div className="space-y-6">
-                                        {reviews.map((review) => <ReviewCard key={review.id} review={review} />)}
-                                    </div>
+                                    <>
+                                        {/* Rating Breakdown */}
+                                        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                                            <h4 className="font-semibold text-gray-800 mb-3">Rating Breakdown</h4>
+                                            <div className="space-y-2">
+                                                {ratingBreakdown.map(({ rating, count, percentage }) => (
+                                                    <div key={rating} className="flex items-center text-sm">
+                                                        <span className="w-3 text-gray-600">{rating}</span>
+                                                        <StarIcon className="h-4 w-4 text-yellow-400 mx-1" />
+                                                        <div className="flex-1 mx-2">
+                                                            <div className="bg-gray-200 rounded-full h-2">
+                                                                <div 
+                                                                    className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
+                                                                    style={{ width: `${percentage}%` }}
+                                                                ></div>
+                                                            </div>
+                                                        </div>
+                                                        <span className="w-8 text-gray-600">{count}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Reviews List */}
+                                        <div className="space-y-6">
+                                            {sortedReviews.slice(0, reviewsToShow).map((review) => <ReviewCard key={review.id} review={review} />)}
+                                        </div>
+                                        
+                                        {/* Load More Button */}
+                                        {sortedReviews.length > reviewsToShow && (
+                                            <div className="text-center mt-6">
+                                                <button
+                                                    onClick={() => setReviewsToShow(prev => prev + 5)}
+                                                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors"
+                                                >
+                                                    Load More Reviews ({sortedReviews.length - reviewsToShow} remaining)
+                                                </button>
+                                            </div>
+                                        )}
+                                    </>
                                 ) : (
-                                    <p className="text-gray-500 text-center py-8">No reviews yet. Be the first to share your experience!</p>
+                                    <div className="text-center py-12">
+                                        <div className="text-gray-400 text-6xl mb-4">⭐</div>
+                                        <p className="text-gray-500 text-lg mb-4">No reviews yet</p>
+                                        <p className="text-gray-400 mb-6">Be the first to share your experience!</p>
+                                        <Link href={`/business/${business.id}/reviews/new`} className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold transition-colors">
+                                            Write the first review
+                                        </Link>
+                                    </div>
                                 )}
                             </div>
                         </div>
