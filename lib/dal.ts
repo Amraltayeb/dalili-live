@@ -1047,14 +1047,14 @@ export async function getReviewsByBusinessId(businessId: string) {
             .from('reviews')
             .select(`
                 *,
-                users!user_id ( id, name, avatar_url )
+                users!reviews_user_id_fkey ( id, name, avatar_url )
             `)
             .eq('business_id', businessId)
             .eq('status', 'active')
             .order('created_at', { ascending: false });
 
         if (error) {
-            console.warn(`Specific foreign key failed, trying simple approach:`, error);
+            console.warn(`Specific foreign key failed, trying simple approach:`, error.message);
             
             // Fallback: get reviews without user data, then fetch users separately
             const { data: reviewsData, error: reviewsError } = await supabase
