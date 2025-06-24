@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { reviewSchema } from '@/lib/validations';
-import { getCurrentUser } from '@/lib/dal';
 
 export async function POST(request: NextRequest) {
   try {
-    // Create Supabase client inside function to avoid build-time errors
+    // Create Supabase client with service role key for API operations
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
-    const user = await getCurrentUser();
-    if (!user) {
+
+    // Get authorization header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
+
+    // Extract the JWT token and verify it
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Authentication error:', authError);
+      return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -24,7 +33,7 @@ export async function POST(request: NextRequest) {
     }
     const data = parseResult.data;
 
-    const { error } = await supabase.from('reviews').insert({
+    console.log('Inserting review with data:', {
       business_id: businessId,
       user_name: user.email?.split('@')[0] || 'Anonymous User',
       user_email: user.email,
@@ -35,10 +44,27 @@ export async function POST(request: NextRequest) {
       helpful_count: 0
     });
 
+    const { data: insertResult, error } = await supabase.from('reviews').insert({
+      business_id: businessId,
+      user_name: user.email?.split('@')[0] || 'Anonymous User',
+      user_email: user.email,
+      rating: data.rating,
+      title: data.title,
+      comment: data.content,
+      images: data.photos || [],
+      helpful_count: 0
+    }).select();
+
     if (error) {
       console.error('Review insert error:', error);
-      return NextResponse.json({ error: 'Failed to submit review.' }, { status: 500 });
+      return NextResponse.json({ 
+        error: 'Failed to submit review.', 
+        details: error.message,
+        code: error.code 
+      }, { status: 500 });
     }
+
+    console.log('Review inserted successfully:', insertResult);
 
     return NextResponse.json({ success: true }, { status: 201 });
 

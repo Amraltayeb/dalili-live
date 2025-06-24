@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { reviewSchema, ReviewData } from '@/lib/validations';
 import { uploadBusinessPhoto } from '@/lib/photo-upload';
 import { getCurrentUser } from '@/lib/dal';
+import { createClient } from '@supabase/supabase-js';
 import { StarIcon, PhotoIcon } from '@heroicons/react/24/solid';
 
 // --- Helper: Star Rating Component ---
@@ -95,9 +96,23 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ businessId, onSuccess }) => {
         }
       }
 
+      // Get the current session token for authentication
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('Authentication expired. Please log in again.');
+      }
+
       const response = await fetch('/api/reviews', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ ...data, photos: photoUrls, businessId }),
       });
 
