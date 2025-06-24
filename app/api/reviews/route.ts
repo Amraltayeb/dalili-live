@@ -25,14 +25,14 @@ export async function POST(request: NextRequest) {
     const data = parseResult.data;
 
     const { error } = await supabase.from('reviews').insert({
-      user_id: user.id,
       business_id: businessId,
+      user_name: user.email?.split('@')[0] || 'Anonymous User',
+      user_email: user.email,
       rating: data.rating,
       title: data.title,
-      content: data.content,
-      photos: data.photos,
-      visit_date: data.visit_date,
-      status: 'active',
+      comment: data.content,
+      images: data.photos || [],
+      helpful_count: 0
     });
 
     if (error) {
