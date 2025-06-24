@@ -93,7 +93,7 @@ export default function AdvancedSearchBar({ className = '', showFilters = false 
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Search businesses, services, products..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent search-input-fix"
             />
           </div>
 
@@ -106,7 +106,7 @@ export default function AdvancedSearchBar({ className = '', showFilters = false 
               onChange={(e) => setLocationQuery(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Location (city, area)"
-              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent search-input-fix"
             />
           </div>
 
