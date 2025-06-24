@@ -96,7 +96,7 @@ export default function AdminBusinesses() {
       cover_url: formData.cover_url ? ensureProtocol(formData.cover_url) : null,
       phone: formData.phone || null,
       whatsapp: formData.whatsapp || null,
-      website: formData.website ? ensureProtocol(formData.website) : null,
+      website_url: formData.website ? ensureProtocol(formData.website) : null,
       address: formData.address || null,
       area_id: formData.area_id || null,
       status: formData.status || 'active',
@@ -111,6 +111,7 @@ export default function AdminBusinesses() {
       },
       gallery_images: formData.gallery_images || [],
       business_hours: formData.business_hours || {},
+      timezone: 'Africa/Cairo', // Default timezone for Egypt
       average_rating: 0,
       total_reviews: 0,
       verified: false
