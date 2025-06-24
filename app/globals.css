@@ -60,4 +60,60 @@ input[type="text"].search-input-fix {
 input[type="text"].search-input-fix:not(:placeholder-shown) {
   color: #1f2937 !important;
   -webkit-text-fill-color: #1f2937 !important;
+}
+
+/* ===== GLOBAL INPUT TEXT VISIBILITY FIX ===== */
+/* Apply text visibility fix to ALL input and textarea elements */
+input[type="text"],
+input[type="email"], 
+input[type="search"],
+input[type="password"],
+input[type="tel"],
+input[type="url"],
+input[type="number"],
+textarea {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #1f2937 !important;
+  opacity: 1 !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="search"]:focus,
+input[type="password"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+  -webkit-text-fill-color: #1f2937 !important;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="search"]::placeholder,
+input[type="password"]::placeholder,
+input[type="tel"]::placeholder,
+input[type="url"]::placeholder,
+input[type="number"]::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 0.7 !important;
+  -webkit-text-fill-color: #6b7280 !important;
+}
+
+/* Extra WebKit specific fixes for autofill */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus {
+  -webkit-text-fill-color: #1f2937 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #ffffff inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
 } 

@@ -135,12 +135,12 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ businessId, onSuccess }) => {
 
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700">Review Title (Optional)</label>
-          <input id="title" {...methods.register('title')} className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
+          <input id="title" {...methods.register('title')} className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 search-input-fix" />
         </div>
 
         <div>
           <label htmlFor="content" className="block text-sm font-medium text-gray-700">Your Review *</label>
-          <textarea id="content" {...methods.register('content')} rows={6} className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+          <textarea id="content" {...methods.register('content')} rows={6} className="mt-1 block w-full px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 search-input-fix"></textarea>
           {methods.formState.errors.content && <p className="text-red-600 text-sm mt-2">{methods.formState.errors.content.message}</p>}
         </div>
 
