@@ -1,21 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
-// Use the environment variables directly for server-side API routes
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Missing Supabase environment variables:', {
-    url: !!supabaseUrl,
-    key: !!supabaseKey
-  });
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export async function GET() {
   try {
+    // Create Supabase client inside function to avoid build-time errors
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing Supabase environment variables:', {
+        url: !!supabaseUrl,
+        key: !!supabaseKey
+      });
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     console.log('Fetching categories from Supabase...');
     console.log('Supabase URL:', supabaseUrl ? 'Present' : 'Missing');
     console.log('Supabase Key:', supabaseKey ? 'Present' : 'Missing');
