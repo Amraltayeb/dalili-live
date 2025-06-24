@@ -136,7 +136,16 @@ async function SearchResults({ searchParams }: { searchParams: { q?: string; loc
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Enhanced Search Bar */}
         <div className="mb-8">
-          <AdvancedSearchBar showFilters={false} />
+          <Suspense fallback={
+            <div className="bg-white rounded-xl shadow-lg p-4">
+              <div className="animate-pulse">
+                <div className="h-12 bg-gray-200 rounded-lg mb-3"></div>
+                <div className="h-8 bg-gray-200 rounded-lg w-1/3"></div>
+              </div>
+            </div>
+          }>
+            <AdvancedSearchBar showFilters={false} />
+          </Suspense>
         </div>
 
         {/* Search Header */}
