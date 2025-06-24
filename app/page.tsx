@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { Suspense } from 'react';
 import { getCategories, getFeaturedBusinesses } from 'lib/dal';
 import { Business, Category } from 'lib/types';
 
@@ -69,7 +70,17 @@ export default async function Home() {
           <div className="relative z-10 text-center px-6">
             <h2 className="text-5xl font-extrabold mb-4">{t.heroTitle}</h2>
             <p className="text-xl mb-8">{t.heroSubtitle}</p>
-            <AdvancedSearchBar className="max-w-2xl" />
+            <Suspense fallback={
+              <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-3">
+                <div className="flex flex-col lg:flex-row gap-3">
+                  <div className="flex-1 h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="lg:w-56 h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                  <div className="h-12 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
+                </div>
+              </div>
+            }>
+              <AdvancedSearchBar className="max-w-2xl" />
+            </Suspense>
           </div>
         </section>
 
