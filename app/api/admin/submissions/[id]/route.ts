@@ -2,17 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { checkUserRole } from '@/lib/auth';
 
-// Use the service role key for admin-level operations
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function PATCH(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
     try {
+        // Create Supabase client inside function to avoid build-time errors
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+
         // 1. Authenticate and verify admin role
         const { isAdmin, error: roleError } = await checkUserRole();
         if (roleError || !isAdmin) {
