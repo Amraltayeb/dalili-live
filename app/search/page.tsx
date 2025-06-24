@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getBusinesses, getCategories, searchBusinessesAdvanced, searchBusinessesByCategoryEnhanced } from '../../lib/dal';
+import { getBusinesses, getCategories, searchBusinessesAdvanced, searchBusinessesByCategoryEnhanced, searchBusinessesWithFilters } from '../../lib/dal';
 import { Business, Category } from '../../lib/types';
 import { StarIcon, PhoneIcon, MapPinIcon, ArrowLeftIcon } from '@heroicons/react/24/solid';
+import AdvancedSearchBar from '../../components/AdvancedSearchBar';
 
 // Custom Compass Icon Component
 const CompassIcon = ({ className = "h-6 w-6" }) => (
@@ -15,10 +16,13 @@ const CompassIcon = ({ className = "h-6 w-6" }) => (
   </svg>
 );
 
-async function SearchResults({ searchParams }: { searchParams: { q?: string; location?: string; category?: string } }) {
+async function SearchResults({ searchParams }: { searchParams: { q?: string; location?: string; category?: string; rating?: string; price?: string; sort?: string } }) {
   const query = searchParams.q || '';
   const location = searchParams.location || '';
   const selectedCategory = searchParams.category || '';
+  const minRating = Number(searchParams.rating) || 0;
+  const priceRange = searchParams.price || '';
+  const sortBy = searchParams.sort || 'relevance';
   
   // Fetch businesses and categories
   let businesses: Business[] = [];
@@ -28,23 +32,55 @@ async function SearchResults({ searchParams }: { searchParams: { q?: string; loc
     // Get categories first
     categories = await getCategories();
     
-    // Now use proper search with category filtering
-    if (selectedCategory) {
-      // Use category-specific search
-      businesses = await searchBusinessesByCategoryEnhanced(selectedCategory);
-    } else if (query || location) {
-      // Use advanced search for text/location queries
-      businesses = await searchBusinessesAdvanced(query, selectedCategory, location);
-    } else {
-      // Get all businesses if no specific search
-      businesses = await getBusinesses();
-    }
+    // Use the new enhanced search with all filters
+    businesses = await searchBusinessesWithFilters({
+      query,
+      location,
+      category: selectedCategory,
+      minRating,
+      priceRange: priceRange ? parseInt(priceRange) : undefined,
+      sortBy,
+      limit: 50
+    });
     
     // Additional client-side filtering for location if needed
     if (location && !selectedCategory) {
       businesses = businesses.filter(business => 
         business.address?.toLowerCase().includes(location.toLowerCase())
       );
+    }
+    
+    // Apply client-side filtering for rating and price if not handled by server
+    if (minRating > 0) {
+      businesses = businesses.filter(business => 
+        (business.average_rating || business.rating || 0) >= minRating
+      );
+    }
+    
+    if (priceRange) {
+      const targetPrice = parseInt(priceRange);
+      businesses = businesses.filter(business => 
+        (business.price_range || 2) === targetPrice
+      );
+    }
+    
+    // Apply sorting
+    switch (sortBy) {
+      case 'rating':
+        businesses.sort((a, b) => (b.average_rating || b.rating || 0) - (a.average_rating || a.rating || 0));
+        break;
+      case 'reviews':
+        businesses.sort((a, b) => (b.total_reviews || 0) - (a.total_reviews || 0));
+        break;
+      case 'newest':
+        businesses.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+      case 'name':
+        businesses.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      default:
+        // Keep original order for relevance
+        break;
     }
     
   } catch (error) {
@@ -67,6 +103,17 @@ async function SearchResults({ searchParams }: { searchParams: { q?: string; loc
             return false;
           }
         }
+        if (minRating > 0) {
+          if ((business.average_rating || business.rating || 0) < minRating) {
+            return false;
+          }
+        }
+        if (priceRange) {
+          const targetPrice = parseInt(priceRange);
+          if ((business.price_range || 2) !== targetPrice) {
+            return false;
+          }
+        }
         return business.status === 'active';
       });
     } catch (fallbackError) {
@@ -77,17 +124,38 @@ async function SearchResults({ searchParams }: { searchParams: { q?: string; loc
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Enhanced Search Bar */}
+        <div className="mb-8">
+          <AdvancedSearchBar showFilters={false} />
+        </div>
+
         {/* Search Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {selectedCategory ? `${selectedCategory}` : 
-             query ? `Results for "${query}"` : 'All Businesses'}
-          </h1>
-          <p className="text-gray-600">
-            {businesses.length} business{businesses.length !== 1 ? 'es' : ''} found
-            {location && ` in ${location}`}
-            {selectedCategory && ` in ${selectedCategory}`}
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {selectedCategory ? `${selectedCategory}` : 
+                 query ? `Results for "${query}"` : 'All Businesses'}
+              </h1>
+              <p className="text-gray-600">
+                {businesses.length} business{businesses.length !== 1 ? 'es' : ''} found
+                {location && ` in ${location}`}
+                {selectedCategory && ` in ${selectedCategory}`}
+                {minRating > 0 && ` · ${minRating}+ stars`}
+                {priceRange && ` · ${Array(parseInt(priceRange)).fill('$').join('')}`}
+              </p>
+            </div>
+            <div className="hidden lg:block">
+              <p className="text-sm text-gray-500">Sorted by: <span className="font-medium">{
+                sortBy === 'relevance' ? 'Most Relevant' :
+                sortBy === 'rating' ? 'Highest Rated' :
+                sortBy === 'reviews' ? 'Most Reviews' :
+                sortBy === 'distance' ? 'Nearest' :
+                sortBy === 'newest' ? 'Newest' :
+                sortBy === 'name' ? 'Name A-Z' : 'Relevance'
+              }</span></p>
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-8">
@@ -261,7 +329,7 @@ async function SearchResults({ searchParams }: { searchParams: { q?: string; loc
   );
 }
 
-export default function SearchPage({ searchParams }: { searchParams: { q?: string; location?: string; category?: string } }) {
+export default function SearchPage({ searchParams }: { searchParams: { q?: string; location?: string; category?: string; rating?: string; price?: string; sort?: string } }) {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

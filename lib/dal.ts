@@ -1013,4 +1013,205 @@ export async function getReviewsByBusinessId(businessId: string) {
     }
 
     return data;
+}
+
+// ===================== ENHANCED SEARCH WITH FILTERS =====================
+
+export async function searchBusinessesWithFilters(params: {
+  query?: string;
+  location?: string;
+  category?: string;
+  minRating?: number;
+  priceRange?: number;
+  sortBy?: string;
+  limit?: number;
+}): Promise<Business[]> {
+  const {
+    query = '',
+    location = '',
+    category = '',
+    minRating = 0,
+    priceRange,
+    sortBy = 'relevance',
+    limit = 50
+  } = params;
+
+  try {
+    let searchQuery = supabase
+      .from('businesses')
+      .select(`
+        *,
+        categories (
+          id,
+          name_en,
+          name_ar,
+          icon_svg,
+          color
+        )
+      `)
+      .eq('status', 'active');
+
+    // Apply text search filters
+    if (query.trim()) {
+      const searchTerm = query.trim();
+      searchQuery = searchQuery.or(`name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+    }
+
+    // Apply location filter
+    if (location.trim()) {
+      searchQuery = searchQuery.ilike('address', `%${location.trim()}%`);
+    }
+
+    // Apply category filter (server-side)
+    if (category) {
+      // First get the category ID
+      const { data: categoryData } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('name_en', category)
+        .single();
+
+      if (categoryData) {
+        const { data: businessIds } = await supabase
+          .from('business_category')
+          .select('business_id')
+          .eq('category_id', categoryData.id);
+
+        if (businessIds && businessIds.length > 0) {
+          const ids = businessIds.map(bc => bc.business_id);
+          searchQuery = searchQuery.in('id', ids);
+        } else {
+          // No businesses in this category
+          return [];
+        }
+      }
+    }
+
+    // Apply rating filter
+    if (minRating > 0) {
+      searchQuery = searchQuery.gte('average_rating', minRating);
+    }
+
+    // Apply price range filter
+    if (priceRange) {
+      searchQuery = searchQuery.eq('price_range', priceRange);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'rating':
+        searchQuery = searchQuery.order('average_rating', { ascending: false });
+        break;
+      case 'reviews':
+        searchQuery = searchQuery.order('total_reviews', { ascending: false });
+        break;
+      case 'newest':
+        searchQuery = searchQuery.order('created_at', { ascending: false });
+        break;
+      case 'name':
+        searchQuery = searchQuery.order('name', { ascending: true });
+        break;
+      case 'distance':
+        // For now, just order by name. Distance would require coordinates
+        searchQuery = searchQuery.order('name', { ascending: true });
+        break;
+      default:
+        // Relevance: prioritize by rating, then by name
+        searchQuery = searchQuery.order('average_rating', { ascending: false })
+                                 .order('name', { ascending: true });
+        break;
+    }
+
+    // Apply limit
+    searchQuery = searchQuery.limit(limit);
+
+    const { data, error } = await searchQuery;
+
+    if (error) {
+      console.error('Enhanced search error:', error);
+      throw error;
+    }
+
+    return data || [];
+
+  } catch (error) {
+    console.error('Enhanced search failed:', error);
+    // Fallback to basic search
+    return searchBusinessesAdvanced(query, category, location);
+  }
+}
+
+// ===================== GET REAL-TIME BUSINESS STATS =====================
+
+export async function getBusinessStats(): Promise<{
+  totalBusinesses: number;
+  totalCategories: number;
+  totalReviews: number;
+  averageRating: number;
+}> {
+  try {
+    const [
+      { count: businessCount },
+      { count: categoryCount },
+      { count: reviewCount },
+      { data: ratings }
+    ] = await Promise.all([
+      supabase.from('businesses').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('categories').select('*', { count: 'exact', head: true }),
+      supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+      supabase.from('reviews').select('rating').eq('status', 'active')
+    ]);
+
+    const avgRating = ratings && ratings.length > 0 
+      ? ratings.reduce((acc, review) => acc + review.rating, 0) / ratings.length 
+      : 0;
+
+    return {
+      totalBusinesses: businessCount || 0,
+      totalCategories: categoryCount || 0,
+      totalReviews: reviewCount || 0,
+      averageRating: Math.round(avgRating * 10) / 10
+    };
+  } catch (error) {
+    console.error('Error fetching business stats:', error);
+    return {
+      totalBusinesses: 0,
+      totalCategories: 0,
+      totalReviews: 0,
+      averageRating: 0
+    };
+  }
+}
+
+// ===================== GET TRENDING CATEGORIES =====================
+
+export async function getTrendingCategories(limit: number = 6): Promise<(Category & { businessCount: number })[]> {
+  try {
+    // Get categories with business count
+    const { data: categoriesWithCount, error } = await supabase.rpc('get_categories_with_business_count');
+
+    if (error) {
+      console.error('Error fetching trending categories:', error);
+      // Fallback to regular categories
+      const categories = await getCategories();
+      return categories.slice(0, limit).map(cat => ({ ...cat, businessCount: 0 }));
+    }
+
+    return (categoriesWithCount || [])
+      .sort((a: any, b: any) => b.business_count - a.business_count)
+      .slice(0, limit)
+      .map((cat: any) => ({
+        id: cat.id,
+        name_en: cat.name_en,
+        name_ar: cat.name_ar,
+        icon_svg: cat.icon_svg,
+        color: cat.color,
+        created_at: cat.created_at,
+        businessCount: cat.business_count || 0
+      }));
+  } catch (error) {
+    console.error('Error fetching trending categories:', error);
+    const categories = await getCategories();
+    return categories.slice(0, limit).map(cat => ({ ...cat, businessCount: 0 }));
+  }
 } 
