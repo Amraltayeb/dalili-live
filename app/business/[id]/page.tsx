@@ -240,12 +240,16 @@ export default function BusinessPage({ params }: { params: { id: string } }) {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
+            console.log('🔍 Fetching business with ID:', params.id);
             try {
                 const businessData = await getBusinessById(params.id);
+                console.log('📊 Business data received:', businessData);
                 if (businessData) {
                     const reviewsData = await getReviewsByBusinessId(params.id);
                     setBusiness(businessData);
                     setReviews(reviewsData);
+                } else {
+                    console.error('❌ Business not found for ID:', params.id);
                 }
             } catch (error) {
                 console.error("Failed to fetch business data:", error);

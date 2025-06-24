@@ -95,9 +95,9 @@ export default async function Home() {
                     
                     <h3 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">{category.name_en}</h3>
                     
-                    {/* Mock business count */}
+                    {/* Real business count - will be implemented */}
                     <p className="text-xs text-gray-500 mt-1">
-                      {Math.floor(Math.random() * 50) + 10}+ businesses
+                      Browse category
                     </p>
                   </div>
                 </Link>

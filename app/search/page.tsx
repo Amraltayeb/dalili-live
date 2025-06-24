@@ -32,16 +32,26 @@ async function SearchResults({ searchParams }: { searchParams: { q?: string; loc
     // Get categories first
     categories = await getCategories();
     
-    // Use the new enhanced search with all filters
-    businesses = await searchBusinessesWithFilters({
-      query,
-      location,
-      category: selectedCategory,
-      minRating,
-      priceRange: priceRange ? parseInt(priceRange) : undefined,
-      sortBy,
-      limit: 50
-    });
+    // Use the working search functions
+    if (selectedCategory) {
+      // Use the working category search for specific categories
+      businesses = await searchBusinessesByCategoryEnhanced(selectedCategory);
+      console.log('🔍 Category search for:', selectedCategory, 'found:', businesses.length);
+    } else {
+      // Use the enhanced search for general searches
+      businesses = await searchBusinessesWithFilters({
+        query,
+        location,
+        minRating,
+        priceRange: priceRange ? parseInt(priceRange) : undefined,
+        sortBy,
+        limit: 50
+      });
+      console.log('🔍 General search found:', businesses.length);
+    }
+    
+    // Debug: Log search results
+    console.log('📊 Search results:', businesses.map(b => ({ id: b.id, name: b.name })));
     
     // Additional client-side filtering for location if needed
     if (location && !selectedCategory) {
